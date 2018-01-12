@@ -1,0 +1,128 @@
+library(needs)
+needs(data.table,ggplot2,jsonlite,dplyr,tidyverse,tidyjson,httr,tm,tidytext,RColorBrewer,wordcloud)
+
+df = fread('')
+
+
+
+
+#  ---------------------------------------------------------------------
+docs = Corpus(VectorSource())
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+remove <- content_transformer(function(x, pattern) gsub(pattern, "", x))
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxxxwf')
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxxxcash')
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+top_CTR=head(d, 200)
+
+# ROFPS ---------------------------------------------------------------------
+df_ROFPS = df[REFERRAL_SUBTYPE_NAME=='ROFPS',DESCRIPTION]
+docs = Corpus(VectorSource(df_ROFPS))
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+remove <- content_transformer(function(x, pattern) gsub(pattern, "", x))
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxxxwf')
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxxxcash')
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+top_ROFPS=head(d, 200)
+
+
+# LOBR ---------------------------------------------------------------------
+df_LOBR = df[REFERRAL_SUBTYPE_NAME=='LOBR - Customer of Interest',DESCRIPTION]
+docs = Corpus(VectorSource(df_LOBR))
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+remove <- content_transformer(function(x, pattern) gsub(pattern, "", x))
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxxxwf')
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxxxcash')
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+top_LOBR=head(d, 200)
+
+
+#  ---------------------------------------------------------------------
+docs = Corpus(VectorSource(df_branch))
+# Convert the text to lower case
+docs <- tm_map(docs, content_transformer(tolower))
+remove <- content_transformer(function(x, pattern) gsub(pattern, "", x))
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, stripWhitespace)
+
+docs <- tm_map(docs, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxxxwf')
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxxxcash')
+
+dtm <- TermDocumentMatrix(docs)
+m <- as.matrix(dtm)
+v <- sort(rowSums(m),decreasing=TRUE)
+d <- data.frame(word = names(v),freq=v)
+top_branch=head(d, 200)
+
+
+
+### Topics
+df_Desc = df[,DESCRIPTION]
+docs = Corpus(VectorSource(df_branch))
+docs <- tm_map(docs, content_transformer(tolower))
+remove <- content_transformer(function(x, pattern) gsub(pattern, "", x))
+# Remove english common stopwords
+docs <- tm_map(docs, removeWords, stopwords("english"))
+docs <- tm_map(docs, stripWhitespace)
+docs <- tm_map(docs, removeNumbers)
+docs <- tm_map(docs, content_transformer(function(x) str_replace_all(x, "[[:punct:]]|<|>", " ")))
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxx')
+docs <- tm_map(docs,removeWords,'xxxxxxxxwf')
+docs <- tm_map(docs,removeWords,'xxxxxxxxxxxxxxcash')
+dtm <- DocumentTermMatrix(docs)
+# m <- as.matrix(dtm)
+# v <- sort(rowSums(m),decreasing=TRUE)
+# d <- data.frame(word = names(v),freq=v)
+rowTotals <- apply(dtm , 1, sum) #Find the sum of words in each Document
+dtm.new   <- dtm[rowTotals> 0, ]
+
+burnin <- 4000
+iter <- 2000
+thin <- 500
+seed <-list(2003,5,63,100001,765)
+nstart <- 5
+best <- TRUE
+k=30
+ldaOut <- LDA(dtm.new,k, method="Gibbs", control=
+                list(nstart=nstart, seed = seed, best=best, burnin = burnin, iter = iter, thin=thin))
+
+ldaOut.terms <- as.matrix(terms(ldaOut,20))
+write.csv(ldaOut.terms,file=paste('LDAGibbs',k,'TopicsToTerms.csv'))
